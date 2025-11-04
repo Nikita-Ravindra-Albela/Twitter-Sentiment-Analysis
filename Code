@@ -1,0 +1,130 @@
+# The dataset was 1.6 Millions rows. It was transfered through Kaggle API onto Microsoft Colab for analysis. 
+
+#Installing Kaggle Libraries
+! pip install Kaggle
+
+#Importing Twitter sentiment Dataset
+import kagglehub
+
+# Download latest version
+path = kagglehub.dataset_download("kazanova/sentiment140")
+
+print("Path to dataset files:", path)
+
+#Importing Libraries
+import numpy as np
+import pandas as pd
+import nltk 
+import re
+import matplotlib.pyplot as plt
+import seaborn as sns
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+
+nltk.download('stopwords')
+
+
+#Printing the stopwords in English (Removing the not influencing words with no contextual information)
+print(stopwords.words('english'))
+
+#Loading the data into Pandas dataframe
+twitter_data = pd.read_csv('/kaggle/input/sentiment140/training.1600000.processed.noemoticon.csv' , encoding = 'ISO-8859-1')
+
+#Checking the data
+twitter_data
+twitter_data.info()
+
+#checking the number of columns and rows
+twitter_data.shape
+
+twitter_data.head()
+
+# Fixing the column names
+column_names = ['target', 'id', 'date', 'flag', 'user', 'text' ]
+twitter_data = pd.read_csv('/kaggle/input/sentiment140/training.1600000.processed.noemoticon.csv' , names=column_names, encoding = 'ISO-8859-1')
+
+
+twitter_data.shape
+
+
+#Checking for missing values
+twitter_data.isnull().sum()
+
+
+#Checking for duplicated enteries
+twitter_data.duplicated().sum()
+
+
+#checking the distribution of target column
+twitter_data['target'].value_counts()
+
+
+#converting the target "4" to "1".
+twitter_data.replace({'target':{4:1}},inplace=True)
+
+twitter_data['target'].value_counts()
+
+twitter_data['target'].value_counts().plot(kind='bar')
+
+#Exploring text-length and quality
+twitter_data['text_len'] = twitter_data['text'].apply(len)
+twitter_data['text_len'].hist()
+
+# Cleaning this text for consistency - removing special characters/hastags/URLS/Emojis
+twitter_data['text'].apply(lambda x: 'http' in x).mean()
+
+# Stemming is the process of reducing a word to its key/root words.
+port_stem =PorterStemmer()
+twitter_data['stemmed_content'] = twitter_data['text'].apply(stemming)
+twitter_data.head()
+
+
+
+# Removing others columns from the data for train text split.
+X =twitter_data['stemmed_content']
+Y = twitter_data['target']
+print(X)
+print(Y)
+
+# Splitting the data to training data and test data
+X_train, X_test, Y_train, Y_test = train_test_split(X,Y,test_size=0.2,stratify=Y, random_state=2)
+print(X.shape,X_train.shape,X_test.shape)
+print(X_test)
+
+# Converting the textual data to numerical data
+
+vectorizer = TfidfVectorizer()
+X_train = vectorizer.fit_transform(X_train)
+X_test = vectorizer.transform(X_test)
+print(X_train)
+
+# Training the model#
+#   Logistic Regression
+model = LogisticRegression(max_iter=1000)
+
+model.fit(X_train,Y_train)
+
+# Evaluating the model
+# Checking the accuracy score on training data
+X_train_prediction = model.predict(X_train)
+training_data_accuracy = accuracy_score(X_train_prediction,Y_train)
+print('Accuracy score on the training data:', training_data_accuracy)
+
+
+# Checking the accuracy score on test data
+X_test_prediction = model.predict(X_test)
+test_data_accuracy = accuracy_score(X_test_prediction, Y_test)
+
+print('Accurancy score on the test data:', test_data_accuracy)
+
+# Model Accurancy is 77.66%
+
+# Saving the trained Model for future purpose
+import pickle
+filename = 'trained_model.sav'
+pickle.dump(model,open(filename, 'wb'))
